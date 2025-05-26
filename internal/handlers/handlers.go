@@ -3,16 +3,24 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/kurnosovmak/akurnosov-microservice-auth/internal/mailer"
+	"github.com/kurnosovmak/akurnosov-microservice-auth/internal/middleware"
 	"github.com/kurnosovmak/akurnosov-microservice-auth/internal/models"
 	"github.com/kurnosovmak/akurnosov-microservice-auth/internal/storage"
 
 	"github.com/golang-jwt/jwt/v5"
+	wsclient "github.com/kurnosovmak/akurnosov-microservice-wshub/pkg/wshub_client"
+)
+
+var (
+	ws *wsclient.Client
 )
 
 // Структуры запросов и ответов
@@ -24,6 +32,11 @@ type AuthRequest struct {
 type AuthResponse struct {
 	Token string      `json:"token,omitempty"`
 	User  models.User `json:"user,omitempty"`
+}
+
+type WsCredsResponse struct {
+	Token  string `json:"token,omitempty"`
+	Server string `json:"server,omitempty"`
 }
 
 type ErrorResponse struct {
@@ -147,7 +160,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
 		"email":   user.Email,
-		"exp":     time.Now().Add(15 * time.Minute).Unix(),
+		"exp":     time.Now().Add(30 * time.Minute).Unix(),
 	})
 
 	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
@@ -157,4 +170,30 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, AuthResponse{Token: tokenString, User: user})
+}
+
+func GetCredsHandler(w http.ResponseWriter, r *http.Request) {
+	sync.OnceFunc(func() {
+		ws = wsclient.NewClient(wsclient.Config{
+			BaseURL: os.Getenv("WSHUB_API_URL"),
+		})
+	})()
+
+	userId, ok := getUserID(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "User ID not found")
+		return
+	}
+	wsToken, err := ws.GetCredentials(fmt.Sprintf("user.%v", userId))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to get credentials")
+		log.Println(err) // TODO: log this t
+		return
+	}
+	writeJSON(w, http.StatusOK, WsCredsResponse{Token: wsToken, Server: os.Getenv("WS_SERVER_URL")})
+}
+
+func getUserID(r *http.Request) (string, bool) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	return userID, ok
 }

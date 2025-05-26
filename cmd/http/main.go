@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/kurnosovmak/akurnosov-microservice-auth/internal/config"
 	"github.com/kurnosovmak/akurnosov-microservice-auth/internal/handlers"
+	"github.com/kurnosovmak/akurnosov-microservice-auth/internal/middleware"
 	"github.com/kurnosovmak/akurnosov-microservice-auth/internal/storage"
 )
 
@@ -37,6 +38,7 @@ func main() {
 	r.HandleFunc("/register", handlers.RegisterHandler).Methods("POST")
 	r.HandleFunc("/verify", handlers.VerifyHandler).Methods("GET")
 	r.HandleFunc("/login", handlers.LoginHandler).Methods("POST")
+	r.Handle("/creds", middleware.JWTMiddleware()(http.HandlerFunc(handlers.GetCredsHandler))).Methods("POST")
 
 	// Создание HTTP сервера
 	srv := &http.Server{

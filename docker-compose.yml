@@ -13,7 +13,7 @@ services:
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
       - SMTP_USER=test@example.com
-      - SMTP_PASS=
+      - SMTP_PASS=test
       - APP_URL=http://localhost:8080
     depends_on:
       - db
