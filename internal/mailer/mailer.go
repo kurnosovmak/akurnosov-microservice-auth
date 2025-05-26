@@ -88,8 +88,18 @@ func SendVerificationEmail(to, token string) error {
 
 	// Отправка письма
 	addr := fmt.Sprintf("%s:%s", host, port)
-	auth := smtp.PlainAuth("", from, pass, host)
+	auth := unencryptedAuth{smtp.PlainAuth("", from, pass, host)}
 	msg := append([]byte(headers), body.Bytes()...)
 
 	return smtp.SendMail(addr, auth, from, []string{to}, msg)
+}
+
+type unencryptedAuth struct {
+	smtp.Auth
+}
+
+func (a unencryptedAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
+	s := *server
+	s.TLS = true
+	return a.Auth.Start(&s)
 }
