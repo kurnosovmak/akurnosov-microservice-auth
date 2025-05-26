@@ -35,10 +35,10 @@ func main() {
 	r.Use(handlers.RecoveryMiddleware)
 
 	// Маршруты
-	r.HandleFunc("/register", handlers.RegisterHandler).Methods("POST")
-	r.HandleFunc("/verify", handlers.VerifyHandler).Methods("GET")
-	r.HandleFunc("/login", handlers.LoginHandler).Methods("POST")
-	r.Handle("/creds", middleware.JWTMiddleware()(http.HandlerFunc(handlers.GetCredsHandler))).Methods("POST")
+	r.HandleFunc("/register", handlers.RegisterHandler).Methods("POST", "OPTIONS")
+	r.HandleFunc("/verify", handlers.VerifyHandler).Methods("GET", "OPTIONS")
+	r.HandleFunc("/login", handlers.LoginHandler).Methods("POST", "OPTIONS")
+	r.Handle("/creds", middleware.JWTMiddleware()(http.HandlerFunc(handlers.GetCredsHandler))).Methods("POST", "OPTIONS")
 
 	// Создание HTTP сервера
 	srv := &http.Server{
